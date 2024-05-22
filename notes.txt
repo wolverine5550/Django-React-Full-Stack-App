@@ -1,0 +1,1201 @@
+These are notes from the Django & React Web App Tutorial.
+I can find the link here: https://www.youtube.com/watch?v=c-QsfbznSXI
+Going to start by creating the backend. 
+The backend will be the API, store the data, and handle different users or other information related to storage.
+
+Once we build the backend, will build the frontend. The user-facing component of the app. 
+This lets people interact with the API (here, making new notes signing in, signing out, etc.).
+
+Once we do that, will deploy a database. Will then connect the db to our backend. It will be more robust and stored in the cloud. 
+Best practice: we can access our db from other sources. 
+
+After that: will deploy the backend, deploy the front end, and then connect both together. 
+
+5:11
+
+First: beginning with backend. Open up Django-React-Tutorial directory.
+Change into it in the terminal. 
+COMMAND: cd Django-React-Tutorial.
+
+
+VIRTUAL ENVS
+Next: create a virtual env to install various python packages.
+COMMAND: python3 -m venv env
+This will create a new virtual environment directory for us (called env).
+Then, we want to activate that venv. 
+COMMAND: source env//bin/activate
+If the activation works, I'll see (env) before my terminal line. 
+
+DEPENDENCIES
+Now that the venv is activated, we need to install the dependencies inside of the venv. 
+To do that, going to create a new file called requirements.txt.
+Going to paste all of the different requirements we need for relevant Python packages. 
+Link to his github repo (06:50). Contains a list of the requirements for this project. 
+https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqazB5QV9mYUtpMDRqMGtfZzFwSkhjZjlTUlNxUXxBQ3Jtc0trMjR6RnhxRVV0cFg0Y3ZwTDM2cHl2R1pLY1VCX2RPVzQ1WHQwM2tvNU9YejkxZVNOcThpbkwxS1FlUEdyVXFjc3dTMkJRanBaNEVYZnNMSlpsblgxWXVENW5yLTRJQTFTRXpjcUJlSmdKWnFwZFNxWQ&q=https%3A%2F%2Fgithub.com%2Ftechwithtim%2FDjango-React-Full-Stack-App&v=c-QsfbznSXI
+Pasting the requirements inside requirements.txt.
+Notes:  
+Django-cors-headers: lets us fix a cross-origin request issue that I may have seen in the terminal before. 
+Djangorestframework-simplejwt: handles JWT authentication.
+Psycopg2-binary lets us work with postgreSQL database. 
+Python-dotenv loads in some environment variables. 
+
+To install these dependencies...
+COMMAND: pip install -r requirements.txt
+May take some time to install...
+
+CREATE NEW DJANGO project (08:20)
+Clear the terminal
+COMMAND: django-admin startproject backend. Backend is the name we're giving it. 
+This will make a new directory. Then cd into that Backend directory.
+COMMAND: cd backend
+Now, we need to create a new Django app. Apps are where we can write custom views and custom code. 
+In backend directory, we have another backend directory named the same thing.
+It's kind of the main directory where we have settings, link different applications, etc.
+But this isn't where we write much of our custom Django code.
+It is in apps and we can have different apps for different uses. E.g., an app for authentication or certain component of the app.
+In this case, we just need a single app. 
+COMMAND: python manage.py startapp api. We're calling the app "api". It will make a new directory called api.
+
+CONFIGURING SETTINGS IN SETTINGS.PY
+From here, go into backend//backend/settings.py.
+Copy the settings he uses (~09:41)
+Starting at the very top: 
+COMMAND: from datetime import timedelta
+COMMAND: from dotenv import load_dotenv
+COMMAND: import os
+Then, going to call the function load_dotenv
+COMMAND: load_dotenv(). This loads an environment variable file. Can use it for db credentials and other things we need.
+Scroll down to allowed hosts.
+COMMAND: Put a "*" between brackets in allowed_hosts. Will let any different host to host our Django app. 
+We do this so we don't get an error when deploying the app on an unknown host later on. 
+Now, we're going to copy in some configuration we need. 
+Related to our JWT tokens, which we'll discuss in a second. 
+COMMANDS: Below ALLOWED_HOSTS and above # application definition. See (10:56) for more. REST_FRAMEWORK and SIMPLE_JWT.
+We're specifying the default authentication classes and default permission classes. 
+We need these when working with JWT Tokens. 
+Then, we specify the lifetime for our JWT Tokens (SIMPLE_JWT).
+The access token that we use to access different routes expires in 30 mins (can change if want).
+The refresh token: will expire in 1 day. We use this to get a new access token.
+NOTE: the refresh token should always have a longer expiration date than the access token. 
+Now, moving on to INSTALLED_APPS.
+COMMAND: add "api", which is the name of the application that we added in the left column.
+COMMAND: add "rest_framework"
+COMMAND: add "corsheaders". Cors is a problem when you have a different origin trying to hit this backend. A preemptive fix here. 
+Now, go into middleware.
+COMMAND: "corsheaders.middleware.CorsMiddleware". Adding a middleware for cors. 
+Then go all the way to the bottom of settings.py and paste in two variables. 
+COMMAND: CORS_ALLOW_ALL_ORIGINS = True. Also, CORS_ALLOWS_CREDENTIALS = True.
+Typically, would allow a specific origin (not all of them). But in our case, all origins slightly different based on how we do the deployment.
+Doing this so we can proceed with the tutorial. 
+If I want to make some changes to make this more secure, can do it later in settings. 
+
+NOW: take requirements.txt file and place it inside the backend directory. 
+Leaving the env file outside of this directory. 
+
+JWT TOKENS: HOW THEY WORK
+We will then implement them in the REST framework.
+Stands for JSON Web Tokens. Acts as permissions or authentications every time we access a website.
+Every time we make a request to the backend, it needs to know who we are and what we have permission to do.
+We'll include a token along with our request to the backend.
+That token can be decoded and understood to represent a certain set of permissions. 
+E.g., sign in with my name, be granted a token, and that token will tell the backend who is interacting with it and what permissions they have.
+A lot of the difficult logic is already handled by Django.
+Essentially, we have some frontend. It's communicating with the backend. 
+It is doing that through a request. Sends a request to the backend and receive a response from the backend. 
+E.g., if first visiting frontend, will have to get a JWT Token so we can interact with the backend and perform some operations.
+We'll pass credentials to the frontend (e.g., username, password, or something like that). 
+The frontend will take those credentials and send to backend.
+Will ask backend to create a token based on credentials.
+Assuming username and password are correct, will be granted two tokens: an access token and a refresh token. 
+Access token is what we use for requests. The refresh token is used to refresh the access token. 
+The frontend stores the access token and refresh token. 
+We'll store them so we can use them in future requests. So we don't have to constantly sign in to the app.
+Let's say the access token expires. Maybe 30 mins, e.g.
+Then, the frontend will submit the fresh token to a specific route on the backend.
+If that refresh token is valid, a new access token will be sent back to us. We'll store it and continue using it.
+Reason we do this: if an access token is leaked, we want it to expire in a certain time period. 
+We can keep refreshing it, and after our refresh token expires, we need to sign back into the site altogether. 
+Then, we'll get new access and refresh tokens. 
+More to this, but that's the general idea. 
+
+MAKING THE REGISTRATION VIEW
+To grant an access token, we need to have a set of credentials.
+So first, we need to create a new user. 
+Once we do that, we can store their username/pass, and can use that to login and access the access token for that user.
+Go into the API view and create a new file called serializers.py.
+Inside this, will import a few things...
+COMMANDS: from django.contrib.auth.models import User; from rest_framework import serializers
+Then, going to create a serializer. 
+Django uses an ORM (object relational mapping). 
+It maps Python objects to corresponding code that needs to be executed to make changes to the db. 
+We can write normal Python code and Django, in the backend, will automatically handle the db operations that must be performed.
+With our API, we're going to use JSON. The standard format for communicating with webapps. 
+From our API, we're going to be accepting JSON data that contains things like username/pass for new user we want to create.
+Also returning JSON data about the response that the API will give to whoever made the request. 
+We need to create a serializer.
+It can take this Python object and convert it into JSON data, so that it can be used in communicating with other applications.
+It lets us take in JSON data and convert it into Python-equivalent code. Vice-versa too: Python code to JSON.
+COMMAND: class UserSerializer... It inherits from serializers.ModelSerializer. 
+Class Meta: then we'll specify the model that we want to serialize is the User model. 
+The User model is built into Django and represents a user within Django. 
+Fields then equal to id, username, and password. 
+These are the fields we want to serialize when we are both accepting and returning a new user (remember: serializer used in 2 places).
+COMMAND: extra_kwargs...
+What this does: tells Django that we want to accept a pass when creating a new user, but we don't want to return it when giving info about a user.
+With write-only, no one can read what the password is. 
+Next, making a function called create. Taking in two arguments: self and validated_data.
+Inside, saying user = User.objects.create_user. To that, we will pass in **validated_data.
+All this is doing is implementing a method that will be called when we want to create a new version of this user. 
+We're going to accept the validated_data. This will have already passed the checks that the serializer does for me. 
+It looks for a valid username and password. 
+The serializer will look at the User model. All of the fields in that model and the ones specified there. 
+Will make sure they are valid. If so, they will pass them the validated_data.
+Once it is passed, it is up to us to create the new user. 
+For the kwargs, we're just splitting up the keyword arguments and passing them in via a dictionary. 
+Then, we return the user. 
+
+22:40: NOW: go to views.py
+Will write a simple view letting us create a new user.
+Even though we have the serializer, we still need the view or path to make this new user. 
+COMMAND: from django.contrib... Importing the user here.
+Then, from rest_framework, importing generics.
+Then from .serializers (the file we just made), import the UserSerializer
+Then, from rest_framework.permissions..
+Now, we make the class-based view that will let us create new user (basically, a registration form).
+COMMAND: class CreateUserView().
+Inheriting from generics.CreateAPIView. This is a generic view that automatically handles creating new user/object for us.
+For this to work, need to specify a few values. 
+Here, saying there's a list of all the different objects to be looking at when creating a new one, so that we don't create user that already exists.
+The serializer class tells this view what kind of data we need to accept to make a new user (here, username and password).
+The permission class specifies who can actually call this. Here, anyone (even if not authenticated) can use this view to create a new user.
+That's it for the view.
+
+NOW: going to urls.py It's in the backend directory (we're moving outside of the api directory).
+Removing all of the comments so it's clearer. 
+We're going to configure URLs here so we can link them up and go to the correct routes. 
+Need to import somet things.
+COMMAND: from api.views import CreateUserView. This is the view we just wrote inside of serializers.py.
+COMMAND: from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView.
+These are pre-built views that let you obtain access and refresh tokens and to refresh the token. 
+Once we create the user, we can use these pre-built views to obtain token for user and effectively sign them in. 
+Going to write a few paths. These are URLs we can go to that will call a function or do some type of operation. 
+COMMAND: path("api/user/register/"). Make sure you always include the trailing slash. 
+This will call createuserview.asview() and the name will be register. 
+So when we go to the api/user/register route, it will call the view we just created (CreateUserView.as_view()) and will let us make a new user.
+Then, implementing the view for refreshing our token.
+COMMAND: path("api/token/refresh/")...
+COMMAND: path("api-auth/")... This will include all the URLs from the rest_framework.urls. 
+What we've done: linked our register view, linked our TokenObtainPairView, and TokenRefreshView.
+We've also linked the pre-built URLS that we need from the rest framework (don't really need to know how it works).
+
+(28:11) Now, go to the terminal.  
+Going to start by making some migrations on our database. 
+Whenever you start a new Django project or make significant changes that involve the data model, you need to run some migrations.
+COMMAND: python manage.py makemigrations
+This will create the file that specifies the make migrations that need to be performed. 
+It says we don't have any migrations. No changes detected, that's fine. 
+Once I have made the migrations, actually need to migrate them. We're going to apply the migration. 
+We do so with the migrate command. 
+COMMAND: python manage.py migrate
+This provisions the db so it has the correct tables and everything setup.
+So whenever you connect to a new db, I want to do these same steps again. 
+
+NOW: we get to run our application.
+COMMAND: python manage.py runserver
+Server starts running and tells you where it's running (127.0...).
+Once we open that up: can see 404 error because we haven't made the routes we defined. 
+E.g., when we go to the api/user/register route, we can see an error about "context."
+Go back to views.py and for serializer_class, should say UserSerializer. 
+Once we do that and refresh, we get to the correct page. 
+What we can do is pass a username/pass and create a new user. 
+Then, we can see how we sign in as that user and get the access token.
+We can then pass a username and pass to create a new user.
+Do that. Typed in username adam and pass adam. Got id of 1 and username of adam. 
+Now, go to the route that is api/token.
+On this page, we'll need to pass our credentials. Once we pass them, we'll get our access token. 
+Once I do that, get a long string of refresh and access tokens.
+This is what the frontend would store and use to access the protected routes. 
+If I copy the refresh token and go to the refresh route, can get a new access token. 
+
+So those were the main routes: get tokens, refresh the token to create a new user.
+Now, we want to start writing routes for authenticated users. 
+Since we can now authenticate them with tokens, want them to create new note, delete new note, etc. 
+Need to understand so we can connect data to authenticated users. 
+Going to start writing what we need to create different notes.
+
+CREATING MODELS
+Clear the terminal and shut down the server. 
+Going to make a new model inside of api/models.py.
+This model will be for our note. 
+COMMAND: from django.contrib.auth.models import User. Importing the User model.
+Then creating a new class called Note. This is going to be a model. 
+COMMAND: class Note (models.Model)
+Remember: Django uses ORM. We'll write out the model definition in Python.
+Then, Django can convert this into the correct db code. 
+Here, we define Python version of models, which specify the types of fields we want to store.
+then, Django automatically maps it for us and adds corresponding rows, tables, etc. in the DB. 
+For our note, we want a title. 
+COMMAND: title = models.CharField(max_length=100)
+COMMAND: content = models.TextField(). Not going to specify min or max length. 
+COMMAND: created_at = models.DateTimeField(auto_now_add=True). 
+The auto_now_add argument tells it that we want it to automatically populate when making a new version or instance of the note.
+COMMAND: author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notes")
+Author specifying who made this note. We can use a ForeignKey.
+A ForeignKey can link something like a User with some data that belongs to that User. 
+In this case, we want each User to have a different collection of notes. Want one User to potentially have many different ones.
+It's a one-to-many relationship. 
+When using ForeignKey, indicating that I'll be linking with some other data source. Here, the User.
+on_delete: means that if I were to delete this User, models.CASCADE indicates we should delete all of the notes this User has.
+For related_name, tells us what field name we want to put on the user that references all of its notes. 
+From User object, can access .notes, and that will give all note objects that the User has created. 
+That's how we link data with the User. 
+
+Then, we're going to create a function to return the title.
+COMMAND: def __str__(self): 
+COMMAND: return self.title. 
+
+CREATING THE SERIALIZER
+Now that we have created the model, we're going to create a serializer. 
+This is an API: we need to convert this into JSON data so that we can receive and return it.
+Going up to the top of serializers.py
+COMMAND: from .models import Note. Importing the Note class from models.py. 
+Then, we make our serializer. 
+COMMAND: class NoteSerializer(serializers.ModelSerializer):
+Then, specifying the Meta class.
+COMMAND: class Meta:
+Then saying, model is equal to the note. 
+COMMAND: model = Note
+Then, defining fields.
+COMMAND: fields = ["id", "title", "content", "created_at", "author"]
+Then, for extra kwargs...
+COMMAND: extra_kwargs = {"author": "read_only": True}. 
+The kwargs is the opposite for User serializer. 
+Says we should be able to read who the author is, but shouldn't be able to write who the author is. 
+We'll manually set who the author is based on who creates this note. We don't want someone to tell us who the author is.
+If I'm signed in and authenticated and make the note, I become the author. Read only: we can't write; just read what it is.
+We want authors to be set by the backend, not by someone deciding who the author should be. 
+
+(38:34) CREATING AND DELETING NOTES
+Now that we have our serializer, going to write some views for creating and deleting notes. 
+First, we have to import the note to views.py.
+COMMAND: from .models import Note
+Also going to import the Note Serializer.
+COMMAND: NoteSerializer after UserSerializer. 
+Going above class CreateUserView to make a view for creating a new note.
+COMMAND: class NoteListCreate(generics.ListCreateAPIView):
+COMMAND: serializer_class = NoteSerializer
+COMMAND: permission_classes = [IsAuthenticated]. 
+Permission classes says you can't call this route unless you're authenticated and passed a valid JWT Token. 
+Notice: we're using ListCreateAPIView, not just CreateAPIView. 
+Reason: this view will list all of the notes the user created or it will create a new note. Two functions there.
+Now, specifying a new method.
+COMMAND: def get_queryset(self):
+COMMAND: user = self.request.user. If want to get user that is autenticated and interacting with this route, we just write this inside the class-based view.
+Self.request.user will give us the User object. It will give us the correct User since we're authenticated. 
+We can then use that User to filter our notes and just get any of the notes written by that User. 
+COMMAND: return Note.objects.filter(author=User). This gets the notes written by that specific User. 
+We can also filter by appending title=something specific if we wanted, e.g. But here, we just want author field, which directs to notes written by this User. 
+Also, through this function, means you can only see notes written by you and not by anyone else. 
+COMMAND: def perform_create (self, serializer):
+This function will help us with some custom configuration when we create a new user. 
+We're overriding the create method. 
+So for all these generic views: e.g., generics.ListCreateAPIView...
+You can leave as is. As long as I specify a serializer class, a permission class, and queryset, it will automatically work.
+It will let me create, list, etc. what it specifies after generics (e.g., ListCreateAPIView)
+But if I want some custom functionality, I need to override specific methods. 
+Here, we need to override get_queryset method and perform_create method. 
+How do I know this? Have to reference the Django documentation. 
+COMMAND: if serializer.is_valid():
+COMMAND: serializer.save(author=self.request.user). Pass author equal to the self.request.user. 
+COMMAND: else: print(serializer.errors)
+With NoteSerializer: when we pass different data to it, it tells us if it's valid or not. 
+What automatically happens in generic list views (highlighting class NoteListCreate) is that...
+any data that's required to create the note will be accepted.
+It will be passed into the serializer that we've written, and the serializer will check against all fields in the model.
+It will make sure that the data is accurate. E.g., checking that title isn't above the maximum length. 
+What we're doing here: accessing that serializer object and we need to manually check if it's valid. 
+If it's valid (the serializer passed all of the checks with the passed data), we'll save the serializer.
+When we save, it will make a new version of the note.
+Anything we pass (here, author=self.request.user) will be an additional field we add onto the note. 
+In this case, we're adding author. 
+Remember: in the serializer, we specified that the author was read only. It won't be passed into us. We need to manually add.
+So that is how we create a note.
+
+DELETING A NOTE (44:21):
+Now creating a view for deleting a note. It's a little easier.
+Creating a new class called NoteDelete.
+COMMAND: class NoteDelete(generics.DestroyAPIView).
+COMMAND: serializer_class = NoteSerializer
+COMMAND: permission_classes = [IsAuthenticated]
+Don't need to specify the queryset here. 
+Then a new function below...
+COMMAND: def get_queryset(self):
+COMMAND: user = self.request.user
+COMMAND: return Note.objects.filter(author=user)
+NOTE: this is the same as the query_set function above. 
+Similar to the above, we only want to delete notes that you own. 
+The ones we can delete are the ones in the filtered list (the return Note.objects.filter(author=user)).
+We don't need to specify the queryset manually. We just specify the method here. 
+So this works exactly the same as NoteListCreate.
+But here, we'll specify a note we want to delete and it will automatically delete for us if authenticated. 
+
+SETTING UP URLS (45:39)
+Now that we have the views, need to set up some URLs. 
+We're going to set them up in the API folder. 
+Making a new file called urls.py in the API folder. 
+Inside of this...
+COMMAND: urlpatterns = []. Equal to an empty list.
+Here we need to write the different URL patterns and actually forward URLs from the main application to here. 
+Go to the top and import.
+COMMAND: from django.urls import path
+COMMAND: from . import views
+Inside of urlpatterns, going to specify two paths. 
+The first path will be for viewing or creating our notes.
+COMMAND: path("notes/", views.NoteListCreate.as_view(), name="note-list").
+Then, another path...
+COMMAND: path("notes/delete/<int:pk>", views.NoteDelete.as_view(), name="delete-note").
+Int:pk stands for primary key.  
+Now, we need to link the URLs from our main URLs file into this file.
+So go to URLs.py in the backend folder. This is where we wrote the URLs before. 
+Then, we'll make a link so we forward specific URLs over to api/urls.py, where they're then handled from this app.
+So go to backend/urs.py.
+COMMAND: path("api/", include("api.urls")),
+We're saying: whenever we go to something that has api/ and it wasn't one of the paths above...
+We're going to take the remainder of the path and forward it to the file api.urls. 
+Inside of there, we'll parse the rest of the path.
+If it matches anything, we'll handle it and go to the views that we wrote within this app. 
+Why didn't we write CreateUserView in this same manner? Inside of URLPatterns?
+We could have, but wanted to keep all routes related to authentication and registration in the same place. 
+
+That is going to wrap up most of the backend code. 
+Going to check if it is working. 
+But before we do: need to make a migration to our db since we made a major change to the data model. 
+Go to terminal.
+COMMAND: python manage.py makemigrations
+We made a new migration: Creating the model Note. 
+Then we need to actually migrate.
+COMMAND: python manage.py migrate. We'll see that this works. 
+Then, run the server.
+COMMAND: python manage.py runserver
+Going to test this out. Go to http://127.0.0.1:8000/api/token/
+Pass in same user and pass (adam and adam)
+Then copy the access token and go to 8000/api/notes.
+Notice that we're getting an error saying that authentication credentials weren't provided.
+This is good. It means that it's working properly. 
+This is because we didn't actually pass the token when we sent the request to this route to view the different notes.
+Can't pass that token without doing a few things that are more advanced. 
+What we'll do is write hte front end. 
+There, I'll see how we pass that token and are actually able to create notes.
+This does work at this point, though.
+If I wanted to test it out, could remove the authentication. 
+Could go to views.py and change permission_classes from IsAuthenticated to AllowAny.
+The issue, though, is I wouldn't have a User since I wouldn't be passing the correct access token. 
+This wraps up the backend.
+
+STARTING THE FRONTEND
+We're going to write this in React. 
+Go into the base directory in terminal (Django-React-Tutorial).
+COMMAND: npm create vite@latest frontend -- --template react
+This is going to create a frontend directory with React installed. 
+Then, we need to install a few packages. 
+COMMAND: cd frontend
+COMMAND: npm install axios react-router-dom jwt-decode
+Axios is for network requests.
+Good to go. Now, can go into frontend diretory and start creating different files. 
+
+(52:00): FRONTEND ORGANIZATION AND AXIOS SETUP
+First, go into src so we can start organizing this directory. 
+First, delete the app.css and index.css files. We don't need them. 
+Then, go into app.jsx. Then removing everything from the div down to the </p> behind Click on the Vite...
+Getting rid of const [count]... line. 
+Then get rid of top three imports (ending in import Vitelogo).
+Also get rid of the import to /app.css.
+Instead, import react.
+COMMAND: import react from "react"
+Now, go into main.jsx.
+Going to remove the import to index.css.
+Now, going to create a few directories (files) within frontend/src.
+They are going to be pages, styles, and components. See them in the src file. 
+This is where we're going to organize our different code. 
+Now, going to make a few more files too. This is all in the src directory. 
+Create: constants.js. Also, make api.js
+We're also going to make an environment variable file inside of the frontend directory. 
+The file name is .env. Going to be in the frontend directory. 
+
+Going to start by going into constants.js.
+First, we need to define a few constants that we'll use within our API.
+COMMAND: export const ACCESS_TOKEN = "access";
+COMMAND: export const REFRESH_TOKEN = "refresh";
+We're doing this here because we're using local storage to store the access and refresh tokens in our browser. 
+I want a key to use to access in my local storage and that's what this key is going to be. 
+Will use these constants to access the access token and refresh token.
+
+Now, going inside api.js. 
+Going to hook up the more complex stuff to start and then we can start writing all of the components. 
+The idea here: we want to write an interceptor. 
+An interceptor will intercept any request that we're going to send
+And it will automatically add the correct headers, so we don't need to manually write it a bunch of times. 
+We're going to use something called Axios. 
+It's a clean way to send network requests and is pretty easy to use. 
+Every time we send a request, it's going to check if we have an access token.
+If we do, it will automatically add it to that request so we don't need to think about it when writing this code. 
+COMMAND: import axios from "axios";
+COMMAND: import {ACCESS_TOKEN } from "./constants";
+From there, we're going to get the API
+COMMAND: const api = axios.create({
+    COMMAND: baseURL: import.meta.env.VITE_API_URL
+})
+Inside of create, we're going to pass an object.
+The object will specify the base URL which equals...
+COMMAND: import.meta.env.VITE_API_URL,
+This lets us import anything specified within an environment variable.
+If we want an environment variable loaded inside of our React code, it needs to start with VITE.
+The idea here: we're going to have this environment variable so it's really easy to load and change what the URL should be.
+
+Now, go to the .env file and specify the same thing.
+COMMAND: VITE_API_URL = "http://localhost:8000"
+We can change that later if we need to, but this should be the URL of our backend server. 
+Not running now, but when we start running, it will be correct. 
+Since that's in there, we import the environment variable through above (import.meta.env.VITE_API_URL).
+We're specifying that as the base URL.
+So when we start using the api (const api), all we need to do is specify the path we want to access.
+We don't then need to specify the base URL.
+
+Now: more code about interceptors.
+COMMAND: api.interceptors.request.use()
+Inside of this will be a function. Going to write an arrow function. 
+COMMAND: (config) => {}
+Inside of this function: we're going to accept the config.
+And then we're going to look in local storage and see if we have an access token.
+If we do, will add that as an authorization header to our request. 
+Otherwise, nothing we need to do because we don't have a header. 
+COMMAND: const token = localStorage.getItem(ACCESS_TOKEN)
+We're trying to get the item with the key ACCESS_TOKEN. 
+We'll set it later, but for now, just going to try to get it. 
+COMMAND: if (token) {config.headers.Authorization = `Bearer ${token}`}
+This is how you pass a JWT access token.
+You create an authorization header, which can automatically be handled for us by Axios. 
+It needs to start with Bearer, then a space, then you have what the actual token is. 
+This is how you embed a variable inside another string. 
+So this config is if it is successful. Then we need to return config.
+COMMAND: return config
+Then, we're going to have another function that is called error.
+COMMAND: (error) => {return Promise.reject(error)}
+Don't worry too much about the error function.
+Primarily looking at adding this authorization header (config.headers.Authorization).
+This authorization header will automatically happen in all of our requests. 
+
+Then, below this, going to use an export command.
+COMMAND: export default api
+Here, we're exporting this object that we just added this interceptor on.
+From now on, going to use this api object, rather than axios by default to send our requests. 
+Consequently, the authorizaton token will be added for us. 
+
+Now, we need a way to get our token.
+Also need a way to protect routes on the frontend and backend. 
+Order he does this may seem weird, but bear with him.
+Lots of code that needs to be written before it is testable. 
+This is because of the security we have on our backend. 
+
+WRITING PROTECTED ROUTES
+Go inside components folder. Make a new file called ProtectedRoute.jsx
+This is a wrapper for a protected route.
+Idea: if we wrap something within protected route, we need to have an authorization token before accessing this route.
+COMMAND: import {Navigate} from "react-router-dom";
+COMMAND: import {jwtDecode} from "jwt-decode";
+COMMAND: import api from "../api";
+COMMAND: import {REFRESH_TOKEN, ACCESS_TOKEN} from "constants";
+
+With import statements done, let's continue.
+COMMAND: function ProtectedRoute({children})
+Inside the function, going to take in children. This is what will be wrapped. 
+Then, for our protected route, we're going to do a few different things. 
+Basic idea: checking if we're authorized before we let someone access this route. 
+Otherwise, need to redirect them and tell them to login before they can view this. 
+Theoretically, someone could bypass this since it's all frontend code. 
+But the concept: I don't want someone to go a route on the frontend that they shouldn't be able to access until they login.
+Writing own custom frontend protection here to make this cleaner. 
+COMMAND: const [isAuthorized, setIsAuthorized] = useState()
+We are importing useState from React (see import statement above in ProtectedRoute.jsx).
+By default, the argument inside useState is null. 
+Then, we're going to write two functions.
+COMMAND: const refreshToken = async () => {}
+refreshToken is an async function. It will refresh the access token for us automatically. 
+Then, we are going to have an auth function which is also async.
+COMMAND: const auth = async () => {}
+This checks whether we need to refresh the token or if we're good to go. 
+Before we implement these functions, we are going to add a little code below auth.
+COMMAND: if (isAuthorized == null) {return <div>Loading...</div>}
+The reason we do this: until useState has a state that's not null, I'm loading, checking tokens, and potentially refreshing them.
+Otherwise, return...
+COMMAND: return isAuthorized ? children : <Navigate to="/login"/>
+Here, if we are authorized, will return the children that we wrapped. 
+Otherwise, returning a component called Navigate, which will go to the login route. 
+This is a component we're using from react-router-dom.
+As soon as this is rendered, will automatically navigate us to a login page. 
+Haven't implemented all of the routing yet, but this is what it will do.
+Then below...
+CODE: export default ProtectedRoute
+NOW: going back into the auth function that we created.
+The idea here: first, look at our access token and see if we have one.
+If we have one, check if it's expired or not. 
+If it's expired, want to automatically refresh the token so the user doesn't have to worry about anything.
+It just happens by itself in the background. 
+That's what the auth function will do. 
+If we can't refresh the token (or it's expired), we'll say you're not authorized. Need to login by going to that login route.
+First thing is to check if you have the token.
+COMMAND: const token = localStorage.getItem(ACCESS_TOKEN)
+Then...
+COMMAND: if (!token) {setIsAuthorized(false)return}
+If not token, setIsAuthorized becomes false. And then we'll return.
+Now if we do have the token, we can decode the token and get what the expiration date is. 
+COMMAND: const decoded = jwtDecode(token)
+Taking in the token for jwtDecode. 
+This will automatically decode it for us and give us access to the value and expiration date. 
+COMMAND: const tokenExpiration = decoded.exp
+EXP stands for expiration there. 
+COMMAND: const now = Date.now() / 1000
+Dividing date by 1000 so we get the date in seconds, not in milliseconds. 
+COMMAND: if (tokenExpiration < now) {await refreshToken}
+if tokenExpiration now, it means that it already expired. Then, we await refreshToken.
+Otherwise, we make setIsAuthorized true.
+COMMAND: setIsAuthorized(true);
+We can set it to true because because if the token isn't yet expired, it means that it's valid.
+We're good to say that yes, it's authorized. We're good to go. 
+
+Now, we're going to write the refreshToken function and then call these functions. 
+COMMAND: const refreshToken = localStorage.getItem(REFRESH_TOKEN)
+Here, we're getting the REFRESH_TOKEN.
+COMMAND: try {const res = await api.post("/api/token/refresh/", {refresh: refreshToken,});} 
+COMMAND: catch (error) console.log(error) {setIsAuthorized(false)}
+Using a try catch block here. 
+Inside the try, we're sending a request to backend with refresh token to get a new access token. 
+The const res stands for response. On the api route, don't forget the trailing slash after refresh. 
+As the payload, we pass refresh equal to the refresh token. 
+Again, we're saying let's get the refresh token (that's in const refreshToken).
+Then, we're going to try to send a response to this route with the refresh token.
+This should give us a new access token. 
+After try:
+COMMAND: if (res.status === 200) {localStorage.setItem}
+200 means that it was successful. We're setting the Access Token to be equal to res.data.access. 
+That is what will contain the access token. 
+Then...
+COMMAND: setIsAuthorized(true)
+COMMAND: else {setIsAuthorized(false)}
+That's how the refreshToken function works. 
+We get the refresh token, we send it to the backend via api.post. 
+When we do that, api.js is going to automatically handle the baseURL.
+So we just need to pass the route that we want to access (/api/token/refresh).
+We then refresh the token.
+If the response status is 200 (successful) and we did get back an access token...
+We'll set the new access token as the ACCESS_TOKEN in local storage. 
+We can then use it when we send requests. 
+Then we make setIsAuthorized to true.
+Otherwise, set it to false just in case there was an error and we didn't get a new access token. 
+
+Last thing we need to do here: write a useEffect.
+COMMAND: Putting useEffect in the import {useState} statement.
+COMMAND: useEffect(() => {}, [])
+Going to implement function here. 
+Auth there: Calling the auth function below. Then, we catch in case there are any errors. 
+If there is an error, we're saying setIsAuthorized to be false. 
+The idea: as soon as we load a protected route, we're going to try to call the auth function.
+We see if we have a token.
+If we do have a token and it's not expired, we can setIsAuthorized to be true.
+If it is expired, we need to refresh the token. Do that in const refreshToken. Wait for that to happen.
+As soon as the token is refreshed and we're authorized, we'll be able to access that route. 
+If we can't access that route or are unauthorized, we're going to return the Navigate component back to login.
+That is the return isAuthorized statement at the bottom. 
+
+So that is our protected route component. 
+Now, we're going to create some pages that we need and set up navigation for our application.
+
+NAVIGATION AND PAGES (1:08:43)
+Going to make a few different components.
+CREATE: Login.jsx. Creating this within the pages folder. 
+CREATE: Register.jsx.
+CREATE: Home.jsx
+CREATE: NotFound.jsx
+Inside of each of these: going to stub a component. 
+Inside of Home.jsx
+COMMAND: function Home () {}
+COMMAND: export default Home
+In the Home function...
+COMMAND: return <div>Home</div>
+Then copy and paste that into login and change everything from Home to Login
+Do the same for NotFound. That is essentially going to be a 404 page. 
+And then do the same for Register. 
+Now that we have these four pages, we're going to App.jsx.
+Here, we're going to write the navigation. How we go between the different pages uses react-router-dom. 
+Going to start with a few imports. 
+Again, this is the route of our app and we want to navigate between different pages via a different address in the URL bar. 
+COMMAND: import {BrowserRouter, Routes, Route, Navigate} from "react-router-dom"
+Now, importing the Login component. 
+COMMAND: import Login from "./pages/Login"
+Then importing the Register component.
+COMMAND: import Register from "./pages/Register"
+Then, importing the Home component.
+COMMAND: import Home from "./pages/Home"
+Then, importing the NotFound component.
+COMMAND: import NotFound from "./pages/NotFound"
+We also need to import the protected route. 
+COMMAND: import ProtectedRoute from "./components/ProtectedRoute"
+
+Now, we're going to write two very simple functions.
+First for logging us out.
+COMMAND: function Logout () {}
+All this does: as soon as we call it, we'll clear LocalStorage.
+COMMAND: localStorage.clear()
+We are clearing our refresh token and access token. 
+Then, we'll return a Navigate to login. 
+COMMAND: return <Navigate to="/login"/>
+That is our logout function. 
+Now, we're going to write one more function. The function is RegisterAnd Logout
+COMMAND: function RegisterAndLogout() {}
+COMMAND: localStorage.clear()
+COMMAND: return <Register />
+This clears local storage. And then returns the register component. 
+The reason we're writing this: if someone is registering, first want to clear local storage so...
+We don't submit access tokens to the register route (where we could potentially get an error).
+Need to make sure that when we're registering, we first clear local storage so we don't have old access tokens lingering around.
+May seem strange, but need to do this to work. 
+Now, we want to set up the App component so we can navigate between different pages. 
+To do that, we're going to return BrowserRouter within function App().
+COMMAND: <BrowserRouter> </BrowserRouter>. This is a component from react-router-dom.
+Here, we need to specify routes.
+COMMAND: <Routes></Routes>
+Inside of there, going to put all of our different routes. 
+We're going to begin by specifying the home route.
+COMMAND: <Route path="/"
+This is a self-contained component.  
+Inside of this, the standard path. 
+The element we want to render here is the following:
+COMMAND: <ProtectedRoute> <Home /> </ProtectedRoute>
+The point here: you can't access the Home component unless you have the access token and the access token is valid. 
+You shouldn't be able to access that since home is for people who are logged in and authenticated. 
+We're wrapping the component we want protected with ProtectedRoute.
+You can use ProtectedRoute for any component that you want. 
+Now, we're going to make another route. The path for this one will be /login.
+COMMAND: <Route path="/login" element={Login /}>
+The element that we're rendering is the login page. 
+This isn't protected. You can go there no matter what. 
+COMMAND: <Route path="/login" element={<Login />} /> 
+Going to then copy that and do the same thing for Register. Going to RegisterAndLogout (the component we wrote)
+COMMAND: <Route path="/register" element={<RegisterAndLogout />} /> 
+Then, putting in another route. 
+COMMAND: <Route path="*" element={<NotFound />} /> 
+It has asterisks, meaning that if you go to any other path, render the element which is equal to the NotFound route (like a 404 page).
+Summary here:
+Starting at the first route. Asking if it is a normal path. If so, go to home. 
+If it's login, go to login. If it's register, go to register. 
+If it is anything else, go to the 404 Not Found page. 
+We can actually test if this is working. 
+Go to the terminal, cd into frontend if I haven't already, and clear. 
+COMMAND: npm install 
+Should work. Then...
+COMMAND: npm run dev
+Once I do that, it runs the development server for us. We can open it up by clicking on localhost...
+I'll see that it goes to login by default. 
+If I try to go to "/", it will redirect me to login. This is because it's a protected route and we don't have our access tokens.
+If I try something besides login or register, it is going to throw a NotFound for now. 
+Go ahead and shut the server down.
+Now, we're going to write some more of our components. 
+
+CREATING THE 404 PAGE
+The first one (easy to get out of the way) is the 404 (NotFound) component. 
+Go to NotFound.jsx
+COMMAND: Remove the "Not Found" in the div.
+COMMAND: (in the div): <h1>404 Not Found </h1>
+COMMAND: <p>The page you're looking for does not exist. 
+
+Next, we want to write a generic form that can be used by our Register and Login pages.
+Also realized we didn't implement the logout route, so going to do that now.
+Go back to App.jsx
+COMMAND: <Route path="/logout" element={<Logout />} />
+
+CREATING THE FORM
+Now, we want to make a form. It'll collect user/pass and submit to the register route or login route.
+We can write one form and make it dynamic so it works for registering and logging in.
+This is because registration is the exact same process as logging in. Username and password. 
+Go to components and make a new file. Form.jsx.
+Working in Form.jsx right now.
+COMMAND: import {UseState} from "react"
+COMMAND: import api from "../api"
+COMMAND: import {Usenavigate} from "react-router-dom"
+That gives us the hook we use to actually access the navigation from code. 
+COMMAND: import { ACCESS_TOKEN, REFRESH_TOKEN } from "../constants"
+That's all for imports.
+COMMAND: function Form ({route, method})
+This is a function called Form that takes in two prompts. 
+The route is what we want to go to when we submit the form. 
+It could be the token route or register route.
+Method is telling us: are we registering or are we logging in?
+These are dynamic props we will pass to specify what this dynamic form should be used for.
+COMMAND: const [username, setUserName] = useState("")
+In terms of the state, need to store the username and password that the user is typing in.
+Putting an empty string in useState
+COMMAND: const [password, setPassword] = useState("")
+One more piece of state to keep track of whether it's loading or not. False to start.
+COMMAND: const [loading, setLoading] = useState(false).
+COMMAND: const navigate = useNavigate(). 
+Then we'll call this hook.
+From here, we just want to write a basic form.
+COMMAND: return <form>OnSubmit={handleSubmit}</form>
+Returning a form that will have on submit. 
+This will call a function. The function that will be called is called handleSubmit.
+Going back up and creating handleSubmit.
+COMMAND: const handleSubmit = () => {}
+HandleSubmit equal to a function. 
+Inside of the parenthesis, taking in e.
+COMMAND: e.preventDefault()
+This prevents us from submitting the form and remove the default behavior so we don't reload the page here. 
+Now that we made the form, going to add a class to this, since we're going to style it in a second.
+COMMAND INSIDE RETURN: className="form-container"
+Now, inside the form, we will write our different elements. 
+COMMAND: <h1>{method === "login" ? "Login" : "Register"}</h1>
+Going to write an H1 tag and look at what method is passed as the prop.
+If the method is equal to login, then going to render Login as the text. 
+otherwise, we're going to render Register. 
+Actually, to make it cleaner, can copy that code and paste it into a const called name.
+COMMAND: const name = method === "login" ? "Login" : "Register"
+Then, we'll just render name inside of h1. 
+The idea is that we're getting the name that we should put into the title for the form. 
+Method will be equal to either login or register. 
+Now, we're going to have some input fields for username or password. 
+COMMAND: <input className="form-input"
+COMMAND: type="text"
+COMMAND: value={username}
+COMMAND: onChange{(e) => setUsername(e.target.value)}
+For onChange, taking in a function e. Setting username to e.target.value.
+COMMAND: placeholder="Username". Lastly, a placeholder equal to Username. 
+Any time we make a change, take in the variable e. Setusername to whatever we typed.
+Adjusting and setting that in the state so we can actually access that when submitting the form. 
+Going to copy it and do a similar thing for password... See the code for more (or 1:22:00)
+Now, we need to add the button. Need a button to submit.
+COMMAND: <button className="form-button" type="submit">
+Then, inside the button, going to put the name we have from the const name. 
+That's login or register, depending on the method we pass into this form. 
+This is it for what we're rendering on the screen. 
+
+Now, we need to write the handleSubmit method. 
+When we submit the form, the first thing we'll do is setLoading to equal true.
+COMMAND: setLoading(true);
+After that, we'll try sending a request to whatever route it is that this form represents. 
+We're going to either try to login or register. 
+We'll set up a try catch to do this.
+COMMAND: But before that, change const handleSubmit to be an async function. 
+COMMAND: try {} catch (error) {alert(error)}
+If we have an error, going to alert which error is there. 
+Then, going to add a finally block.
+COMMAND: finally {setLoading(false)}
+No matter what happens, we're going to try to send the request.
+If there is an error, we'll catch it. 
+And whether it worked or didn't work, we're going to setLoading to equal false.
+Eventually, we'll have a loading indicator here and we'll want to turn that off. 
+Inside of try, we're going to try to send a request. 
+COMMAND: const res = await.api.post(route, {username, password})
+We're going to post to the route that was passed into the form. 
+We then pass a username and a password. 
+It uses the API that we wrote to send a post request to whatever the route is.
+It then passes the username and password.
+We'll wait until we get it back, and then check the following:
+COMMAND: if (method === "login") {localStorage.setItem(ACCESS_TOKEN, res.data.access)};
+If method is equal to login, then setting the access token to be res.data.access.
+COMMAND: localStorage.setItem(REFRESH_TOKEN, res.data.refresh)
+The idea here: we're going to send this request.
+If an error occurs, it will be handled in the catch block.
+If no error occurs, then we'll check if the method was login. 
+If it was, that means we have to get the access token and refresh token and set them. 
+Then... navigating to the slash page. Using the navigate function from above to view notes (we'll see in one second)
+COMMAND: navigate("/").
+Otherwise... navigating to /login
+COMMAND: else {navigate("/login")}
+Reason here: if it wasn't login, it must have been register. 
+If it was register, there's no tokens we need to set.
+To get the tokens, we actually need to login with our new registered account. 
+
+ADDING FORM STYLES
+Some things we're going to do later on, but now, want to add some styling. 
+We want to go to these elements and see how they work. 
+So for styling, going to create a new file in the styles folder.
+Going to call it form.css.
+Here, just going to copy in styles. Not going to write them out (kind of a waste of time).
+1:26:11 - pasting in all the styles. Below for a little commentary. 
+If I want them, can get them from the git repository (I'm going to do that).
+For these styles to be applied, we need to import the file.
+Go to Form.jsx
+COMMAND: import "../styles/Form.css"
+Last thing: need to export this component.
+COMMAND: export default Form
+Now that we have exported the Form, we can start using it. 
+
+CONNECTING THE LOGIN OR REGISTER FORM (1:26:51)
+We're going to use the form for the login and register components. 
+It's going to be pretty straightforward. 
+To start, go to Register.jsx and import the form. 
+COMMAND: import Form from "../components/Form"
+Then, rather than returning a div, going to return the Form component but will pass two props to it.
+When we're registering, the route we want to go to is "api/user/register/". Make sure the trailing slash is there.
+Then, the method is going to be "register"
+COMMAND: Form route="api/user/register/" method="register" />;
+All that is: setting the route we're sending the request to and we're specifying the name (or method) which is register.
+We can then copy that for Login.
+Go to Login.jsx
+But this time, tiny change...
+COMMAND: <Form route="api/token/"... That's the change here. 
+Now, we should be using this form for both the Login and Register route. 
+To check, go to terminal...
+COMMAND: in the frontend folder: npm run dev
+Click on localhost5173...
+Visiting /login gets you to the login page. /register gets you to the register page. 
+The main thing to check is whether the token is working. 
+But before that, we need to make sure the backend is running. 
+So split the terminal and cd into the backend directory. Then run the app.
+Make sure I activate the virtual environment before doing so. 
+COMMAND: python manage.py runserver
+Checking where it's running (http://127.0.0.1:8000/).
+Copy that and go to the environment variable (.env file on the side)
+COMMAND: paste that 127.0... into the VITE_API_URL variable there. 
+Remove the trailing slash, otherwise we'll get an error. 
+Shut down the VITE server and rerun it so that it reloads the enviornment variable.
+COMMAND: npm run dev
+Now, the backend and frontend are running. 
+Technically, we should be sending requests to the backend. Let's test it out.
+SO: go to localhost5173/register. 
+Make username: new_user. Make pass: 12345
+Open up the inspect window to see what is happening. Click on register
+It redirects you to login. 
+If I go to the terminal, I can see that a POST request was sent.
+On his terminal, he can even see what the options were (username and pass). I can't see that, though.
+Regardless, can see the POST was successful with 201. 
+Now, let's try to login.
+Notice that it brings him to home. 
+Can access home even though it's a protected route, because now, he has his access token.
+Have a post to API/token and have a status code of 200. It's working successfully. 
+It brings me back home. 
+I can access home, even though it's a protected route, because I have my access token. 
+We have a post to token and a status code of 200. No CORS errors.
+I can go to /login, and then I can go back to home because I still have the access token. 
+However, if we go to /logout, it will redirect us to login. And then if I try to go to home, I can't.
+It will require me to re-login. Then it'll bring me to home and I'm good to go.
+
+WRITING THE HOMEPAGE (1:31:07)
+Good progress.
+Now, let's write the homepage. 
+Then, we can actually make some notes and our application can do something.
+Right now: we can login, register, and the form is built.
+The hard part is done. Now, we need to actually start interacting with our notes. 
+So we're going to home.jsx. This is the homepage.
+We want to view notes we have, create new notes, and delete notes. 
+Going to start with some imports. 
+COMMAND: import {useState, useEffect} from "react"
+COMMAND: import api from "../api"
+Inside the home function, we're going to start with the state that we need. 
+We need to keep track of the notes that we've already grabbed from the server. 
+Because the first thing we'll do when we load this page: send an authorized request to get the notes we created.
+COMMAND: const [notes, setNotes] = useState([]);
+Inside of useState is an empty array. 
+We then need some state for the form on this page that lets us create a new note. 
+We're going to do it all in this component (could put it in a separate one if we wanted it cleaner).
+Here, going to have some State for the content and title of the note. 
+COMMAND: const [content, setContent] = useState("")
+COMMAND: const [title, setTitle] = useState("")
+Now, we're going to write a few functions that will send some requests. 
+We'll write the HTML in a second. 
+For now, want to show how we, e.g., send a request to get all the notes the user wrote.
+To do this, we'll write a function called getNote.
+COMMAND: const getNotes = () => {}
+COMMAND: api.get("/api/notes/")
+Above, we're calling the /api/notes route.  
+NOTE: need the trailing slash here. 
+Remember: if we go to backend/api/urls.py, we have different routes that we've written.
+We already have notes/ and notes/delete/.
+The reason we're prefixing this with api is this: the way that we forwarded the URLs...
+If we go go backend/backend/urls.py, we'll see that anything that had api/ and wasn't one of the roots up there got forwarded...
+to the other API routes that we have at backend/api/urls.py.
+That's why we know it's the correct route. 
+Ultimately, we wrote our paths at backend/api/urls.py and now we're going to access them from our frontend. 
+So api.get("api/notes/") is going to give us all the notes this user has written. 
+Then, going to add the following code:
+COMMAND: .then((res) => res.data).then((data) => setNotes(data))
+COMMAND: .catch((err) => alert(err))
+Catch is in case of an error. If there is an error, we'll alert on screen. 
+This is the get note function that will get all of the notes for us. 
+Then above that, we're going to write a useEffect.
+It will simply call the getNotes function as soon as we visit the page. 
+COMMAND: useEffect(() => {getNotes();}, [])
+From there, inside of the .then((data)), we can console log what the notes are. 
+COMMAND: inside of .then((data)), console.log(data).
+This helps us see what the data is when we load this component. 
+Before we go further, going to see if this request works. 
+Open up the terminal, restart the frontend and backend, and refresh. 
+When you refresh the homepage and inspect, you'll see that you get an empty list. 
+That's because we haven't created any notes yet. 
+If you go back, we can see we're sending the request to /api/notes. 
+Going to continue writing our code.
+
+DELETING AND CREATING NOTES (1:35:50)
+Now that we can get notes, let's find a way to create and delete them.
+Starting with deleting notes.
+COMMAND: const deleteNote = (id) => {}
+COMMAND: api.delete(`/api/notes/delete/${id}/`)
+COMMAND: .then((res) => {if (res.status === 204) alert("Note deleted!)
+COMMAND: else alert("Failed to delete note.")})
+COMMAND: .catch((error) => alert(error))
+COMMAND: getNotes()
+With deleteNote, we need to take in the ID of the note we want to delete. 
+Then, we'll say api.delete(since the request is to delete this time).
+We'll use some backticks. In there, going to pass the ID of the note that we want removed.
+Then, a .then. We'll get a response and then check the status code of the response. 
+If res status equals 204 (successfully deleted), we'll have an alert 
+Otherwise, an alert for failure to delete the note. 
+Then, we're going to have a .catch. We're going to catch an error and alert it. 
+Then, we'll call the getNotes function. Not the most optimal way to do it.
+However, if we deleted a note, it means our notes have changed. We want to show that update on the screen.
+We call getNotes and that will update the screen by removing the notes when receiving the new notes from our backend. 
+Really, on frontend, should just be removing it from the list (in const notes, setNotes), but doing it this way instead.
+
+Now, we need to write the last function before getting into HTML (creating notes)
+COMMAND: const createNote = (e) => {} - following inside these brackets. 
+COMMAND: e.preventDefault()
+COMMAND: api.post("/api/notes/", { content, title }).
+COMMAND: .then((res) => {})
+COMMAND: if (res.status === 201) alert("Note created")
+COMMAND: else alert("Failed to make note")
+COMMAND: .catch(err) => alert(err))
+COMMAND: getNotes()
+We take in some value e (since this is coming from a form).
+Then, we say, e.preventDefault.
+Then, api.post and post to api/notes (the same one we used to get results. But here, using post, not get).
+Then, we're passing the content and title of the note we want to create. 
+Then, we're taking the response in a .then.
+If response.status equals 201 (meaning we created the note), the alert will be note created. 
+Otherwise, there's an error, so alert failed to make note. 
+Then, we need a .catch. If we have an error, going to alert the error. 
+Lastly, getNotes() again
+Now, we have our createNote function. 
+
+WRITING HTML
+From here, we have our three functions. Now, we need to write the HTML.
+We'll have two main components.
+First: displaying our notes.
+Second: a form for creating a note.
+So staying on home.jsx...
+Create a div under return.
+COMMAND: <div><h2>Notes</h2></div>
+Inside, we're going to render our notes. 
+However, going to write a separate component to display the notes. 
+So for now, going to leave that empty. 
+Now, going to make the form.
+COMMAND: <h2>Create a Note</h2>
+COMMAND: <form onSubmit={createNote}></form>
+The form has an onSubmit that equals the createNote function. 
+Inside the form, we're going to write our different elements. 
+COMMAND: <label htmlFor="title">Title:</label>
+COMMAND: <br />
+Then, having an input field.
+COMMAND: <input type="text" id="title" name="title" required onChange={(e) => setTitle(e.target.value)}
+Required onChange equals e, and then setTitle equals e.target.value
+COMMAND: value={title}. Also setting value to equal title here. 
+
+That's the first part. Now need the same thing for the content.
+Going to copy the label for Title and break lines. Pasting it below value={title}
+COMMAND: changing it to "content">Content>
+Then, adding a text area
+COMMAND: <textarea id="content" name="content" required value={content} onChange={(e) => setContent(e.target.value)}
+onChange is a function that sets content for e.target.value.
+Then, another break line. 
+COMMAND: <br />
+COMMAND: <input type="submit" value="Submit></input>
+Here, an input. Type and value equal submit. 
+Ultimately, here: returning a big div. 
+First part displays all of the notes. 
+Then, a second part where we create a note. 
+When we submit a form, it's going to call the createNote function. It will pass the title and content. 
+That completes the homepage (other than displaying all of the notes)
+Going to test it out.
+Make sure frontend and backend servers are running. npm run dev and python manage.py runserver
+Creating a test note with "test note" for title and "test note" for content.
+When you submit, should get an alert saying the note was created. 
+If we refresh and inspect the page, we can see that we have a new note. 
+Author is id 2, content and title are there, etc. 
+An issue, though. When we created the note, it didn't update right away. 
+In Home.jsx, go to the deleteNote function. 
+COMMAND: put getNotes() inside of the if/then. 
+Need to do that for all of the places we created it. 
+Do the same in createNote
+Now, we want to display different notes and style this page. 
+Make a new component inside of the components directory. It will be called Note.jsx.
+
+BUILDING THE NOTE COMPONENT (1:43:50)
+This is going to represent one single note. We'll use this to easily render our other notes too. 
+COMMAND: import React from "react"
+COMMAND: function Note({note, onDelete}) {}
+Then, going to make a function called Note.
+Note will take in the note itself and a function called onDelete. 
+Then, going to return some HTML.
+COMMAND: return <div> className="note-container"></div>
+Inside the div...
+COMMAND: <p className="note-title">{note.title}</p>
+COMMAND: <p className="note-content>{note.content}</p>
+COMMAND: <p className="note-date">{}
+COMMAND: <button className="delete-button" onClick={() => onDelete(note.id)}>Delete</button>
+For onClick, we're calling the onDelete function and it passes the note.id
+What we're doing: rendering the container with note-container.
+We'll have the title, content, and date. then, the delete button which calls the onDelete function that we passed as a prompt.
+In that function, we have the id of the note, which is what we need to delete the note. 
+It's why we wrap it with another function: to pass the arugment note.id into the function. 
+Now, we need to make a new variable for the date.
+COMMAND: const formattedDate = new Date(note.created_at).toLocaleDateString("en-US")
+Converting note.created_at to a localeDateString.
+This strips off all of the parts that we don't need to see (like time zone)
+It'll just tell us what the date was when we created the string. Will give us a nicely formatted date. 
+Then, pass formattedDate into the <p> for note-date. 
+COMMAND: <p className="note-date">{formattedDate}
+
+Now that we have this Note component, we can use it inside of the home page. 
+So go to Home.jsx. Then, go below <h2>Notes</h2>
+COMMAND: {notes.map((note) => (<Note note={note} onDelete={deleteNote} key={note.id} />))}
+We're going to map each of our notes and show each note component. onDelete equals the deleteNote function. 
+We'll call that with the ID. key = note.id. 
+This helps us avoid the common error of needing a key on all dynamically rendered elements. 
+We're rendering note, but also need to import Note. 
+COMMAND: import Note from "../components/Note"
+From here, testing on both the frontend and backend. 
+Error that he saw: /src/components.Note.jsx doesn't provide an export named "default"
+Go back to Note.jsx. Need to export this.
+COMMAND: export default Note
+Going back to frontend. Can see the note is appearing. We can then delete and it goes away. 
+
+FRONTEND FINISHING TOUCHES (1:48:24)
+Now, we're going to add some styling.
+Go to styles folder and create a new file called Note.css.
+Also, while we're here, create Home.css and LoadingIndicator.css.
+LoadingIndicator is a component that we're adding there. 
+Going to Note.css and copying all of the code from the GitHub repository. I'm doing it too. 
+Going to do the same for Home.css and LoadingIndicator.css.
+Now, we need to import the styles.
+Go to Home.jsx.
+COMMAND: import "../styles.Home.css
+Using the same import in Note.jsx.
+COMMAND: import "../styles.Note.css
+Now, when we create, view, and delete a note, we'll see that it looks much better. 
+
+The last thing we need: a loading indicator. 
+E.g., if we go to localhost5173/logout, when we press login, we want to see a login loading indicator. 
+To do that, we're going to make a new component. 
+Inside of the components directory, create LoadingIndicator.jsx.
+We already have the CSS written for it. 
+Writing the component is very straightforward.
+COMMAND: import "../styles/LoadingIndicator.css"
+COMMAND: const LoadingIndicator = () => {}
+const LoadingIndicator is an arrow function. 
+Inside of it, returning a div.
+COMMAND: return <div> className="loading-container">
+COMMAND: <div> className="loader></div></div>
+COMMAND: Then, we're going to export default LoadingIndicator
+Now, we can use this anywhere we want.
+Let's go to Form.jsx.
+In between the last input and button, we're going to write some conditional rendering.
+COMMAND: {loading && <LoadingIndicator />}
+Pretty straightforward. We're going to show the loading indicator when we're loading.
+The CSS we wrote in LoadingIndicator.css will do the nice animation for us. 
+This will work if we test it. 
+
+The frontend is over!
+The backend is also finished and everything is working on localhost. 
+Next, we need to deploy a db, connect to the db, and then connect to both the backend and frontend via Choreo.
+Going to start with the database.
+
+DATABASE DEPLOYMENT (1:52:00)
+As a reminder, going to use Choreo to deploy our database. 
+Once there, create a new account. I'll be brought to a portal to create the db. 
+Can do many things on the dashboard. E.g., you can create a project.
+But first thing: create the database integration. 
+After that, we'll make a project. In that project, we'll create some components.
+We'll have our backend and frontend and use Choreo to link them together. 
+Free when you're in the developer tier. Can upgrade for more production-ready deployments. 
+STEP: Go to dependencies tab on left side of the screen. Then, click on databases. 
+From here, we will create new databases.
+We are essentially creating a trial database. It's not meant to be production ready.
+Can mess with features and try out deploying a database. 
+STEP: Create a new database, use PostgreSQL. For the name, call it db. 
+From there... only have one option for hosting. This is because it's a free trial demo db. 
+STEP: We're selecting Digital Ocean, United States, and Hobbyist. Then create. 
+It'll take a few minutes to spin out the db.
+One thing to note: this is a trial db, so it's powered off every hour. 
+Means that if it's powered on, I need to come back here and power it on manually. 
+For development purposes, this is fine. 
+While this spins up, copy values we have on this page into an environment variable file on our backend Python project.
+COMMAND: Go to backup and create a .env file. 
+We're going to specify a few variables and use the values from Choreo as those values.
+COMMAND: defining variables: DB_HOST, DB_PORT, DB_USER, DB_NAME, DB_PWD.
+From there, go to my Choreo page and copy in the values. 
+Putting these values in the environment variable file. 
+
+Now that we created the db: we want to connect to it from Django.
+Then, we can provision it using Python's manage.py or what exists here in Django.
+Then, we can use the app like we normally would, except this time, connected to a remote db. 
+Go to backend/settings.py. Then go to databases. 
+We're going to change a bunch of things where it says DATABASES.
+COMMAND: change "ENGINE" value to "django.db.backends.postgresql"
+COMMAND: change "NAME" value to the environment variable. "os.getenv("DB_NAME"),
+The reason why this works: at top of this file, we load in our environment variable file (the command load_dotenv())
+We have all the variables in that env file.
+From there...
+COMMAND: "USER": os.getenv("DB_USER"),
+COMMAND: "PASSWORD": os.getenv("DB_PWD"),
+COMMAND: "HOST": os.getenv("DB_HOST"),
+COMMAND: "PORT": os.getenv("DB_PORT"),
+That will configure our db. 
+Now that we have environment variables loaded in, we can connect to the db. 
+Bring up terminal and stop running the backend. 
+COMMAND IN TERMINAL: in the backend file: python manage.py migrate
+This will connect to the remote db. Going to take quite a bit longer. 
+Complete...
+COMMAND: python manage.py runserver
+Now in new database, so need to make any accounts again. 
+NOTE: to run the server, may need to power up Choreo again. Do this on the Choreo website.
+Credentials: new_user, 12345. 
+Notice that when creating a new user, it will take longer. That's because we're connecting to a remote db, not local.  
+Once we log in, we can create a note. 
+If I want to see the logs, I can view them on Choreo. I can see metrics and advanced settings too.
+If I want, I can also gate access based on IPs. 
+
+DEPLOYMENT CONFIGURATION (1:59:47)
+Now that we've deployed the db, it's time to deploy the backend.
+To do this, we need to set up a git repository. 
+By doing this, Choreo can view it, read it, and automatically respond to new commits and do automatic deployments.
+So we need to set up our code to work for a git repository.
+Going to make a new file called .gitignore. 
+Inside of .gitignore, we're going to ignore the Python virtual environment directory. We don't need it. 
+Then, go to frontend/.gitignore. 
+COMMAND: Add .env to the bottom there. We don't want to include that in the git repo. 
+Then, go to backend and create .gitignore. 
+COMMAND: .env db.sqlite3
+We're ignoring .env and db.sqlite3
+
+Now, we're going to create a few deployment-related files in our backend. 
+Creating a new folder in backend called .choreo.
+COMMAND: Inside .choreo, creating a new file called endpoints.yaml
+Here, we'll specify the endpoints we want to deploy and what we want to expose from this specific component (the backend).
+Choreo will look inside of this .choreo folder to find this configuration. 
+COMMAND: version: 0.1
+Then, we'll specify our endpoints.
+We'll specify a name. 
+COMMAND: It can be REST API (doesn't matter what we call it).
+Then, we'll specify a few other things.
+COMMAND: port: 8000
+COMMAND: type: REST
+COMMAND: networkVisibility: Public
+COMMAND: context: /
+This is all a basic configuration that Choreo looks for when deploying a REST API.
+The port needs to match the port of our Django API (8000)
+Type is REST since this is a REST API.
+With network visibility, setting to public means anyone can view it. Could also specify as project or organization.
+For context, this is the base path of the API that we want to expose. 
+We want to expose the entire one, so we're going with the single slash. 
+Look to more details in the Choreo documentation if necessary. 
+Need to make one more file...
+Inside of .choreo, create Procfile.
+Procfile will specify the command to start executing our app. 
