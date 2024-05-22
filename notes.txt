@@ -1199,3 +1199,148 @@ Look to more details in the Choreo documentation if necessary.
 Need to make one more file...
 Inside of .choreo, create Procfile.
 Procfile will specify the command to start executing our app. 
+COMMAND: web: python manage.py runserver 0.0.0.0:8000
+This is exactly what we would normally do to execute the server...
+But this time, 0.0.0.0 means run on any origin or on the public IP address of the server that we're executing on.
+This way, it will be public and anyone will be able to access it. 
+That's it for configuration. 
+
+Now, we need to add this to github.
+We're going to make a new github repo. Navigate in terminal to Django-React-Tutorial.
+COMMAND: git init
+COMMAND: git add .
+COMMAND: git commit -m "first commit"
+Then, we're going to change the branch.
+COMMAND: git branch -M main
+That's going to change the branch from master to main.
+We need to do that when we push to git.
+Clear the terminal. Then going to git, making a new repo, add it here, then push this code to GitHub.
+Go to GitHub. Make a new repo called Django-React-Full-Stack-App
+We need to make this public. In the developer tier for Choreo, we can only have public repositories. 
+Not going to have a README and we have the repository set up. We just need to add the origin and push our code. 
+From here, take command on the GitHub page that starts with 'git remote add origin...'
+Then, go to our terminal and paste it in there. Directory is Django-React-Tutorial
+Then, we're going to push this.
+COMMAND: git push -u origin main
+This will push all of the code to the remote repo. Now, we can start setting up our deployment. 
+When we refresh on github, we'll see all of our code popping up. 
+From there, can go to Choreo and go to the overview tab. 
+
+CHOREO PROJECT SETUP (2:04:44)
+Now that this is setup on Github, I'm going to create a new project in Choreo. 
+Go to overview tab and click on create new project. 
+Make the name Django-React-Tutorial. 
+He's using the monorepo setting (only one repo containing everything), but I'm not seeing that option...
+Then click on authorize with GitHub. May have to go through a few steps to authorize it. 
+Then, go to the Github repository and select the one I want. Main is the branch since it's the only one we have. 
+then, it will automatically detect our different components. Press create to make the new project. 
+Now, we're going to add the components ourselves. 
+Start by creating a service. The service is going to be for our REST API.
+For component name, call it backend. Description is empty. Select Python as the buildpack.
+For Python directory, select backend. For language version, 3.10. Then create. 
+While it does that, we'll create the frontend service. 
+Go with web application. Name is Frontend and buildpack is React. 
+Project directory is frontend. Build command is npm install && npm run build
+Build path is /dist. This is where the output file will go when we actually build this application. 
+Node version will be 20.0. Can go with any version as long as it's high enough. This should be fine. Then create. 
+That will create the frontend component for us. 
+Now, we need to build these components and then deploy them. Pretty straightforward to do this. 
+
+BACKEND DEPLOYMENT (2:07:20)
+Go back to backend in Choreo.
+Then, go to the build tab. 
+Here, we can build latest or view different commits. In our case, build latest. 
+Wait a bit: it will build the latest version of this, and then we can deploy it and test the API. 
+Once the build is complete, go to the left tabs and click on deploy. From here, we can deploy the build.
+Also notice: we have the option to auto deploy.
+If we enable that, as soon as a new commit is made on our branch, it will automatically build and deploy. 
+You can see that now, we can configure and deploy. 
+Click on that and now I can see I can mount some environment variables. That's what we'll do now.
+Remember: we need to pass the environment variables for our db configuration. 
+We can add a bunch of environment variables here. But because we only have one, going to do it another way.
+Instead, click on next. 
+For file mount, click next.
+Endpoint details: fine here. Click on deploy. 
+Once the first version is deployed, it'll give us the option to configure some secrets.
+Click on manage configs and secrets. Then, click on create. Then select secret and environment variables. 
+We want this secret since we don't want anyone to view this after it's created. 
+This is going to be the data to connect to my db. 
+We'll add the different environment variables we need to match what we had in our local repo. 
+COMMAND: config name is env
+Go back to our code and find the environment variable file (backend/.env). Then, copy all of those values over. 
+NOTE: don't use quotation marks with them. Just add the value. Then press create. This will add the env variables as secrets.
+If I want to edit, will have to re-add all of the values. This is because I can't view the contents anymore. 
+Then, go back to deploy. It should automatically redeploy with those environment variables. 
+Now, our API will be deployed. If we want to view the endpoints, we can view them on the right. 
+Can see the project URL and public URL. 
+However, the public URL is going to automatically be protected from Choreo.
+Choreo's automatically going to add an API key that we need to pass in order to access this URL.
+If I just try to go to the URL, it's not going to work. Alert that I don't have the right security credentials. 
+That's intentional: Choreo will automatically protect APIs for me. 
+If I want to disable protection, I need to do it manually.
+Go to the deploy tab, then click on endpoint configurations. 
+Change the API visibility to public. We want this so anyone can access API and interact with our app. 
+Then, changing some of the levels for application security. 
+NOTE: the instructions above may be slightly different since Choreo changed its website. 
+Disable OAuth2 option. We already have our JWT tokens, and for this example, a little complex to have enabled. 
+Now, when we try to access the API, we'll be able to send a request to it.
+Before, we would need to pass an API token and would require more code changes. 
+Now, go back to deploy tab. If I haven't yet, redeploy to apply new settings. 
+Then, view the endpoints. If we take the public URL and paste it in.
+His example: sees bad request, which is fine. It means we could access the API. We didn't have a security issue like before.
+Check to see if there's a problem with the database connection.
+Go to Observability and then Metrics. We can see the logs with our app.
+Says we can't connect to the db.
+Most likely: the db turned off because it has been one hour. 
+Get out of the project. Go to Dependencies and then Databases. I can see that it is powered off. Power it back on.
+Then, go back into the application (Django-React-Tutorial). Then go into Components and Backend.
+Redeploy as soon as the DB is powered back on. Then test out to see if functioning (get the public endpoint and paste into browser).
+
+Assuming the backend is working: we'll deploy the frontend.
+Once the frontend is deployed, we need to connect it to the backend. Then, we'll have a fully deployed application.
+
+FRONTEND DEPLOYMENT (2:14:45)
+First, going to Build so we can build the latest version of our frontend. Click on "Build Latest"
+Once this is built, going to check it out and connect it to the backend. 
+Once it is built, go to the Deploy tab. 
+A few settings we need to change first. 
+Click on Authentication Settings. Disable managed authentication with Choreo. 
+We're not using the authentication for this specific app. 
+But if building from ground up and wanted to use Choreo, I would enable this. It has some good documentation re this. 
+Avoiding this since the whole point of this tutorial was using JWT Tokens with Django.
+Click on Deploy.
+Once it has been deployed, should see the frontend working.
+Click on the web app URL.
+We now see that we have our frontend working (the login page). We can go to /register and see that it works too. 
+But if try to use this and create a new account, e.g., not going to work.
+This is because we're not connected to the backend. 
+
+CONNECTING THE FRONTEND WITH BACKEND (2:16:38)
+To make the connection, we need to go to Dependencies and then Connections. 
+Choreo can deploy our backend on the same origin as our frontend. 
+Or at least let us make the request on the same origin so we don't need to interact with something outside of our origin.
+This is useful for many applications. 
+Once you click on Create, going to select backend REST API.
+For connection name, call it backend. Then, click on create. 
+I'm going to see a bunch of instructions on the right hand side for how to connect. 
+This is if I was using the authentication handled by Choreo. 
+In our case, we aren't, so don't need to follow these steps. 
+This is helpful if I don't build in authentication by myself (like I did in Django)
+What we want to do now: copy the serviceURL. 
+It's hosted on the same domain on our frontend, which means we can send requests to this.
+Whatever we add afterwards is the API route that we'll be redirected to.
+Go back to VS Code. Go to frontend/src/api.js. We're going to write some code.
+Below the import statements...
+COMMAND: const apiURL = "file:///choreo-apis/djangoreacttutorial/backend/v1"
+I'm pasting the route in there. That's the service URL from Choreo. 
+Notice: we're not putting a different domain. It's just the path that will be on the same domain. 
+Now, need to look for the presence of the "import.meta.env.VITE_API_URL" environment variable file. 
+If it exists, we're going to use what's inside of there. Otherwise, going to use the apiURL.
+COMMAND: baseURL: import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : apiUrl,
+What this does: It will use the const apiURL when we're in the deployed environment.
+It's the connection we need to our backend. 
+Now, we need to make a new commit.
+Go to terminal...
+COMMAND: git add .
+COMMAND: git commit -m "add backend url"
+COMMAND: 
